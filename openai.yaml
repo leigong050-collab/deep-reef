@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deep Reef · 深蓝珊瑚缸"
+  short_description: "预览、安装与调整写实深蓝海水缸桌面，支持独立鱼群游动和投喂"
+  default_prompt: "使用 $deep-reef 预览深蓝海水缸，确认动态效果后帮我应用到 Mac 桌面。"

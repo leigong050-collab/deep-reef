@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#020a1b"><title>Deep Reef · 深蓝珊瑚缸</title><link rel="icon" href="data:,"><link rel="stylesheet" href="./style.css"></head>
+<body>
+<main id="habitat" aria-label="深蓝珊瑚缸"><canvas id="scene" aria-label="可互动的海水缸，点击水面投喂"></canvas></main>
+<div id="loading" role="status" aria-label="正在加载"><span class="loading-orbit"></span></div>
+<div id="error" role="alert" hidden><h1>水族箱暂时未能启动</h1><p id="error-detail"></p><button id="reload">重新加载</button></div>
+<nav class="chrome" aria-label="水族箱控制" hidden>
+<button id="pause" aria-label="暂停" disabled><svg viewBox="0 0 24 24"><path id="pause-glyph" d="M8 5v14M16 5v14"/></svg></button>
+<button id="feed" aria-label="投喂" disabled><svg viewBox="0 0 24 24"><path d="M5 17c4-5 10-5 14 0M8 5v1m8 1v1m-4 1v1M3 20h18"/></svg></button>
+<button id="light-cycle" aria-label="切换灯光" disabled><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
+<button id="quality-cycle" aria-label="切换画质" disabled><svg viewBox="0 0 24 24"><path d="M4 17h16M7 7v10m5-13v13m5-8v8"/><circle cx="7" cy="11" r="2"/><circle cx="12" cy="7" r="2"/><circle cx="17" cy="13" r="2"/></svg></button>
+<button id="fullscreen" aria-label="全屏" disabled><svg viewBox="0 0 24 24"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></svg></button>
+<button id="hide" aria-label="隐藏控制栏" disabled><svg viewBox="0 0 24 24"><path d="M5 5l14 14M3 12s3-6 9-6c2 0 4 1 5 2m4 4s-3 6-9 6c-3 0-6-2-8-4"/></svg></button>
+<select id="light" aria-label="灯光" hidden><option value="blue">深蓝展缸</option><option value="moon">月光</option><option value="day">清透日光</option></select>
+<select id="quality" aria-label="画质" hidden><option value="eco">节能</option><option value="balanced">均衡</option><option value="detail">精细</option></select>
+</nav>
+<button id="show" aria-label="显示控制栏"><svg viewBox="0 0 24 24"><path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.5"/></svg></button>
+<span id="status" class="sr-only"></span><div id="toast" class="sr-only" role="status" aria-live="polite"></div>
+<script type="module" src="./boot.js"></script>
+</body></html>
