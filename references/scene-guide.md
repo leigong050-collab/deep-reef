@@ -11,6 +11,8 @@
 - `app/renderer.js`: orthographic 16×9 composition, contain fit on non-wide screens. Shader deforms only elliptical soft-tissue masks near torch coral and anemone. Rocks are static. Fish use subdivided textured meshes with tail bending and eased turns. This is image-based 2.5D, not mesh-based coral geometry.
 - `app/settings.js`: `blue`, `moon`, `day`; `eco`, `balanced`, `detail`. A quality profile caps both resolution and frame rate. Browser preferences use `deep-reef.settings` localStorage; storage failures fall back safely.
 - `app/main.js`: one cancellable animation loop, resets frame timestamps when paused or hidden, no food injection while stopped. `window.deepReef.status()` is a read-only diagnostics snapshot. `habitatRate`, `habitatPower`, `habitatLight`, `habitatFeed`, `habitatPointer` are the native bridge.
+- `app/frame-clock.js`: retains fractional frame budget under uneven callbacks. Balanced and detail target 60 fps, battery caps at 30; canvas `data-fps` reports measured rendering cadence every two seconds of active wall time.
+- `app/fish-pose.js`: positive scales and continuous yaw replace instantaneous direction flips. Tail phase is integrated per fish, so acceleration cannot reset the beat. Two curved, photo-textured surfaces add limited thickness and lighting; they do not replace a fully modeled fish with separate eyes, gills and fins.
 - `wallpaper/Wallpaper.swift`: MIT-derived AppKit host. Native host owns pause, screen coverage/sleep/power and per-screen windows. `--preview` creates one standard window. Native website store is ephemeral. Native lighting and pause live in `UserDefaults` under `org.deepreef.wallpaper`.
 
 ## Interaction
