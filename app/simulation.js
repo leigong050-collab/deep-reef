@@ -15,6 +15,7 @@ export function createWorld(){
   const id=fish.length,a=n*2.39996,r=Math.sqrt((n+.5)/12),ox=Math.cos(a)*r*.068,oy=Math.sin(a)*r*.044;
   fish.push({id,kind:'chromis',school:true,ox,oy,x:.25+ox,y:.25+oy,size:.021+(n%3)*.002,vx:.018,vy:0,heading:0,phase:n*.74});
  }
+ for(const f of fish){f.tailPhase=f.phase;f.swimSpeed=Math.hypot(f.vx*1.77,f.vy);}
  return {time:0,food:[],eaten:0,nextFood:0,fish};
 }
 export function feed(world,x=.30,y=.10){
@@ -40,7 +41,9 @@ export function advance(world,elapsed,pointer=null){
   for(const p of world.food){const d=Math.hypot((p.x-f.x)*1.77,p.y-f.y);if(d<dist){dist=d;target=p;}}
   if(target){tx=target.x;ty=target.y;if(dist<.017){world.food=world.food.filter(p=>p.id!==target.id);world.eaten++;}}
   let dx=(tx-f.x)*1.77,dy=ty-f.y;
-  const length=Math.hypot(dx,dy),speed=target?.10:f.school?.06:small?.045:.036;
+  const length=Math.hypot(dx,dy),cruise=target?.10:f.school?.06:small?.045:.036;
+  const pulse=.82+.30*Math.pow(.5+.5*Math.sin(t*1.4+f.phase),3);
+  const speed=cruise*pulse*Math.min(1,length/(target?.025:.055));
   let desiredX=length>.004?dx/length*speed/1.77:0,desiredY=length>.004?dy/length*speed:0;
   if(f.school){
    for(const other of world.fish){if(other===f||!other.school)continue;const sx=(f.x-other.x)*1.77,sy=f.y-other.y,d=Math.hypot(sx,sy);if(d<.035&&d>.0001){desiredX+=sx/d*(.035-d)*.6/1.77;desiredY+=sy/d*(.035-d)*.6;}}
@@ -49,10 +52,19 @@ export function advance(world,elapsed,pointer=null){
    const px=(f.x-pointer.x)*1.77,py=f.y-pointer.y,d=Math.hypot(px,py);
    if(d<.15&&d>.0001){desiredX+=px/d*(.15-d)*.6/1.77;desiredY+=py/d*(.15-d)*.6;}
   }
-  // Smooth acceleration prevents mechanical stops and instantaneous direction flips.
-  const blend=1-Math.exp(-dt*1.4);f.vx+=(desiredX-f.vx)*blend;f.vy+=(desiredY-f.vy)*blend;
+  // Turn the fish first; velocity follows its nose, never the other way around.
+  const wantedSpeed=Math.min(cruise*1.3,Math.hypot(desiredX*1.77,desiredY));
+  if(wantedSpeed>.0001){
+   const angle=Math.atan2(-desiredY,desiredX*1.77),delta=Math.atan2(Math.sin(angle-f.heading),Math.cos(angle-f.heading));
+   f.heading+=clamp(delta,-dt*(small?1.9:1.2),dt*(small?1.9:1.2));
+  }
+  f.swimSpeed+=(wantedSpeed-f.swimSpeed)*(1-Math.exp(-dt*2.2));
+  f.vx=Math.cos(f.heading)*f.swimSpeed/1.77;f.vy=-Math.sin(f.heading)*f.swimSpeed;
   f.x=clamp(f.x+f.vx*dt,.045,.955);f.y=clamp(f.y+f.vy*dt,.09,.84);
-  if(small&&!target){const floor=waterFloor(f.x)-.022;if(f.y>floor){f.y=floor;f.vy=Math.min(f.vy,0);}}
-  if(Math.hypot(f.vx,f.vy)>.002){const a=Math.atan2(-f.vy,f.vx*1.77);let delta=Math.atan2(Math.sin(a-f.heading),Math.cos(a-f.heading));f.heading+=clamp(delta,-dt*1.1,dt*1.1);}
+  if(small&&!target){const floor=waterFloor(f.x)-.022;if(f.y>floor){f.y=floor;}}
+  // Integrate the beat. Multiplying total elapsed time by current speed caused
+  // enormous phase jumps whenever a fish accelerated late in the session.
+  f.tailPhase+=dt*((small?7.8:4.8)+f.swimSpeed*55);
+
  }
 }

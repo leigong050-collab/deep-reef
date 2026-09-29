@@ -1,5 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import {PROFILES} from './settings.js';
+import {fishPose} from './fish-pose.js';
 
 const vertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`;
 const backgroundFragment=`
@@ -24,6 +25,36 @@ const backgroundFragment=`
   #include <colorspace_fragment>
  }`;
 
+
+const fishVertex=`
+ uniform float phase;uniform float effort;varying vec2 vUv;varying vec3 vNormal;
+ void main(){
+  vUv=uv;vec3 p=position;
+  float tail=pow(clamp((.27-p.x)/.72,0.,1.),1.7);
+  float wave=sin(phase+p.x*8.);
+  p.z+=wave*tail*(.025+effort*.027);
+  p.y+=cos(phase+p.x*8.)*tail*.005;
+  // Fine edge motion belongs to fins; the head remains stable.
+  float fin=smoothstep(.085,.22,abs(p.y))*(1.-smoothstep(.24,.44,p.x));
+  p.z+=sin(phase*1.35+p.x*20.)*fin*.005;
+  vNormal=normalize(normalMatrix*normal);
+  gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
+ }`;
+const fishFragment=`
+ uniform sampler2D image;uniform float brightness;uniform vec3 tint;uniform float time;uniform float depth;
+ varying vec2 vUv;varying vec3 vNormal;
+ void main(){
+  vec4 texel=texture2D(image,vUv);if(texel.a<.06)discard;
+  vec3 n=normalize(vNormal);if(!gl_FrontFacing)n=-n;
+  float form=.83+.17*abs(n.z)+.035*n.y;
+  float shimmer=pow(max(0.,sin(vUv.x*18.+vUv.y*26.+time*.8)),12.)*.045;
+  vec3 color=texel.rgb*(form+shimmer)*brightness*tint;
+  color=mix(color,vec3(.011,.035,.070),depth);
+  gl_FragColor=vec4(color,texel.a);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+ }`;
+
 export async function createRenderer(canvas,world,settings){
  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'low-power'});
  renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor('#020a1b');
@@ -35,9 +66,22 @@ export async function createRenderer(canvas,world,settings){
  const uniforms={image:{value:plate},time:{value:0},brightness:{value:1},tint:{value:new THREE.Vector3(1,1,1)}};
  const bg=new THREE.Mesh(new THREE.PlaneGeometry(16,9),new THREE.ShaderMaterial({uniforms,vertexShader:vertex,fragmentShader:backgroundFragment}));scene.add(bg);
  const fishMeshes=world.fish.map(f=>{
-  const geometry=new THREE.PlaneGeometry(1,2/3,24,8);const original=geometry.attributes.position.array.slice();
-  const material=new THREE.MeshBasicMaterial({map:maps[f.kind],transparent:true,alphaTest:.1,depthWrite:false,side:THREE.DoubleSide,color:f.kind==='chromis'?(f.school?'#a7cadf':'#a9b9d1'):'#c0ceeb'});
-  const mesh=new THREE.Mesh(geometry,material);mesh.position.z=1+f.id*.01;scene.add(mesh);return {mesh,original};
+  const shape={clown:[.045,.34,.15,.065],chromis:[.06,.30,.12,.05],yellow:[.04,.28,.23,.065],butterfly:[.06,.25,.21,.06],gramma:[.04,.31,.12,.05]}[f.kind];
+  const group=new THREE.Group();group.position.z=1+f.id*.015;scene.add(group);
+  const fishUniforms={image:{value:maps[f.kind]},phase:{value:f.tailPhase},effort:{value:0},brightness:{value:1},tint:{value:new THREE.Vector3(1,1,1)},time:{value:0},depth:{value:f.school?.14:.045}};
+  // Two bowed surfaces give the photographic skin a continuous silhouette in a turn.
+  // Transparent fins remain thin; the body occupies depth between the two sides.
+  for(const side of [1,-1]){
+   const geometry=new THREE.PlaneGeometry(1,2/3,48,24),a=geometry.attributes.position;
+   for(let j=0;j<a.count;j++){
+    const x=a.getX(j),y=a.getY(j),q=Math.pow((x-shape[0])/shape[1],2)+Math.pow(y/shape[2],2);
+    a.setZ(j,side*(.001+Math.sqrt(Math.max(0,1-q))*shape[3]));
+   }
+   geometry.computeVertexNormals();
+   const material=new THREE.ShaderMaterial({uniforms:fishUniforms,vertexShader:fishVertex,fragmentShader:fishFragment,transparent:true,depthWrite:true,side:THREE.DoubleSide});
+   group.add(new THREE.Mesh(geometry,material));
+  }
+  return {group,fishUniforms};
  });
  const foodGeometry=new THREE.BufferGeometry();const foodPositions=new Float32Array(32*3);foodGeometry.setAttribute('position',new THREE.BufferAttribute(foodPositions,3));foodGeometry.setDrawRange(0,0);
  const foodMaterial=new THREE.PointsMaterial({color:'#c9a97b',size:.028,sizeAttenuation:true,transparent:true,opacity:.85,depthWrite:false});const foods=new THREE.Points(foodGeometry,foodMaterial);foods.frustumCulled=false;scene.add(foods);
@@ -56,17 +100,14 @@ export async function createRenderer(canvas,world,settings){
   uniforms.time.value=world.time;uniforms.brightness.value=settings.brightness*(settings.light==='moon'?.60:settings.light==='day'?1.10:1);
   uniforms.tint.value.set(...(settings.light==='moon'?[.74,.86,1]:settings.light==='day'?[1.15,1.06,.97]:[1,1,1]));
   for(let i=0;i<world.fish.length;i++){
-   const f=world.fish[i],{mesh,original}=fishMeshes[i],a=mesh.geometry.attributes.position;
-   const speed=Math.hypot(f.vx*1.77,f.vy);const phase=world.time*(3.4+speed*24)+f.phase;
-   for(let j=0;j<a.count;j++){
-    const x=original[j*3],y=original[j*3+1],tail=Math.pow(Math.max(0,.48-x),2);
-    a.array[j*3+1]=y+Math.sin(phase+x*6)*tail*.040;
-    a.array[j*3+2]=Math.sin(phase+x*6)*tail*.105;
-   }a.needsUpdate=true;
-   const facing=Math.cos(f.heading);mesh.scale.set(f.size*16*(Math.sign(facing)||1)*Math.max(.35,Math.abs(facing)),f.size*16,1);
-   mesh.rotation.z=Math.sin(f.heading)*.22*(facing<0?-1:1);
-   mesh.position.x=f.x*16-8;mesh.position.y=4.5-f.y*9+Math.sin(phase*.53)*.007;
-   mesh.material.opacity=settings.light==='moon'?.68:.96;
+   const f=world.fish[i],{group,fishUniforms}=fishMeshes[i],pose=fishPose(f);
+   group.scale.set(pose.scaleX,pose.scaleY,pose.scaleX);
+   group.rotation.set(0,pose.yaw,pose.roll,'ZYX');
+   group.position.x=f.x*16-8;group.position.y=4.5-f.y*9;
+   fishUniforms.phase.value=pose.phase;fishUniforms.effort.value=Math.min(1,f.swimSpeed/.06);
+   fishUniforms.time.value=world.time;
+   fishUniforms.brightness.value=uniforms.brightness.value*.93;
+   fishUniforms.tint.value.set(uniforms.tint.value.x*.91,uniforms.tint.value.y*.98,uniforms.tint.value.z);
   }
   world.food.forEach((p,i)=>{foodPositions[i*3]=p.x*16-8;foodPositions[i*3+1]=4.5-p.y*9;foodPositions[i*3+2]=2;});foodGeometry.setDrawRange(0,world.food.length);foodGeometry.attributes.position.needsUpdate=true;
   for(let i=0;i<34;i++){motesPositions[i*3]=((i*.6180339+world.time*.0007)%1)*16-8;motesPositions[i*3+1]=((i*.41421+world.time*.0004)%1)*9-4.5;motesPositions[i*3+2]=2.5;}motesGeometry.attributes.position.needsUpdate=true;

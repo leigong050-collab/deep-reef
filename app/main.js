@@ -2,6 +2,7 @@ import {createWorld,advance,feed} from './simulation.js';
 import {PROFILES,readSettings,saveSettings,shouldAnimate} from './settings.js';
 import {createRenderer} from './renderer.js';
 import {createControls} from './control-state.js';
+import {createFrameClock} from './frame-clock.js';
 const $=s=>document.querySelector(s),canvas=$('#scene'),world=createWorld();
 const native=location.protocol==='deep-reef:';
 const wallpaper=native&&!new URLSearchParams(location.search).has('preview');
@@ -10,21 +11,29 @@ let storage;try{storage=localStorage;}catch{storage=null;}
 const prefs=readSettings(storage,matchMedia('(prefers-reduced-motion: reduce)').matches);
 // The native host owns pause persistence and power policy.
 if(native)prefs.paused=false;
-let scene,frame=0,last=0,hostRate=native?0:60,onBattery=false,pointer=null,toastTimer;
+const clock=createFrameClock();
+let scene,frame=0,hostRate=native?0:60,onBattery=false,pointer=null,toastTimer;
+let observedFrames=0,observedStart=null,measuredFps=0;
 const controls=createControls({settings:prefs,sendNative:native?m=>window.webkit.messageHandlers.reefControl.postMessage(m):null,changed:schedule,persist});
 function running(){return shouldAnimate({paused:prefs.paused,hidden:document.hidden&&!wallpaper,hostRate});}
 function persist(){saveSettings(storage,prefs);}
 function message(text){$('#toast').textContent=text;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),2400);}
 function refresh(){
  const active=running();$('#pause').setAttribute('aria-label',prefs.paused?'继续':'暂停');$('#pause').setAttribute('aria-pressed',String(prefs.paused));$('#pause-glyph').setAttribute('d',prefs.paused?'M8 5l11 7-11 7z':'M8 5v14M16 5v14');$('#feed').disabled=!active;
- $('#light').value=prefs.light;$('#quality').value=prefs.quality;$('#status').textContent=prefs.paused?'已暂停':hostRate===0?'休息中':`${Math.min(PROFILES[prefs.quality].fps,hostRate,onBattery?30:60)} 帧 / 秒 · 本地运行`;
+ $('#light').value=prefs.light;$('#quality').value=prefs.quality;$('#status').textContent=prefs.paused?'已暂停':hostRate===0?'休息中':`最高 ${Math.min(PROFILES[prefs.quality].fps,hostRate,onBattery?30:60)} 帧 / 秒 · 本地运行`;
 }
-function schedule(){cancelAnimationFrame(frame);frame=0;last=0;refresh();scene?.render();if(scene&&running())frame=requestAnimationFrame(tick);}
+function schedule(){cancelAnimationFrame(frame);frame=0;clock.reset();observedFrames=0;observedStart=null;refresh();scene?.render();if(scene&&running())frame=requestAnimationFrame(tick);}
 function tick(now){
- if(!running()){frame=0;last=0;return;}frame=requestAnimationFrame(tick);
- const fps=Math.min(PROFILES[prefs.quality].fps,hostRate,onBattery?30:60),step=1000/fps;
- if(!last){last=now;return;}if(now-last<step-.5)return;
- advance(world,Math.min((now-last)/1000,.08),pointer);last=now;scene.render();
+ if(!running()){frame=0;clock.reset();return;}frame=requestAnimationFrame(tick);
+ const fps=Math.min(PROFILES[prefs.quality].fps,hostRate,onBattery?30:60),dt=clock.sample(now,fps);
+ if(!dt)return;advance(world,dt,pointer);scene.render();
+ if(observedStart===null){observedStart=now;observedFrames=0;}
+ else observedFrames++;
+ if(now-observedStart>=2000){
+  measuredFps=Math.round(observedFrames*10000/(now-observedStart))/10;
+  canvas.dataset.fps=String(measuredFps);canvas.dataset.simulationTime=world.time.toFixed(2);
+  observedFrames=0;observedStart=now;
+ }
 }
 function pause(value){controls.pause(value);}
 function doFeed(x=.3,y=.1){if(!scene||!running())return;feed(world,x,y);message('已投喂 · 鱼群正在靠近');}
@@ -35,7 +44,7 @@ window.habitatPointer=(x,y)=>{if(scene)pointer=scene.point(x,y);};
 window.habitatPointerOut=()=>{pointer=null;};
 window.habitatLight=value=>controls.receiveLight(value);
 window.habitatPaused=value=>controls.receivePause(value);
-window.deepReef=Object.freeze({status:()=>({ready:!!scene,time:world.time,fish:world.fish.length,food:world.food.length,eaten:world.eaten,paused:prefs.paused,hostRate,light:prefs.light,quality:prefs.quality}),feed:()=>doFeed(),pause});
+window.deepReef=Object.freeze({status:()=>({ready:!!scene,time:world.time,fish:world.fish.length,food:world.food.length,eaten:world.eaten,paused:prefs.paused,hostRate,light:prefs.light,quality:prefs.quality,measuredFps}),feed:()=>doFeed(),pause});
 $('#reload').onclick=()=>location.reload();
 function fail(error){cancelAnimationFrame(frame);scene?.dispose();scene=null;$('#loading').hidden=true;$('#error-detail').textContent=error.message||String(error);$('#error').hidden=false;console.error(error);}
 canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();fail(new Error('图形上下文已中断。重新加载即可重新初始化水族箱。'));});
