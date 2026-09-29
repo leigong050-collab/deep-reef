@@ -7,3 +7,11 @@
 - Skill metadata validator passed.
 
 Local deployment: Deep Reef is installed as a running per-user login agent, and the bundled Codex Skill passed metadata validation after installation. Existing Desktop Habitats was stopped and its login agent disabled, while retaining its application and files. A snapshot was taken from the installed desktop process. Long-running battery consumption, multi-monitor changes and every sleep/lock transition have not been tested. Final visual acceptance belongs to the user. GitHub publication is tracked separately from local verification.
+
+
+## v0.1.1 motion update
+
+- 19 behavior tests cover continuous tail beats during feeding, smooth half-turn projection, forward swimming, frame pacing, and existing interactions.
+- Browser preview measured 60 fps and native windowed preview measured about 58 fps on the development Mac on 2026-09-24; these are observations, not performance guarantees.
+- Native pause/resume and feed-disabled-while-paused were verified.
+- Fish remain photo-textured 2.5D surfaces; full three-dimensional anatomy and photographic realism have not been achieved.
