@@ -8,6 +8,12 @@ A quiet, offline saltwater aquarium for macOS and the browser — with a reusabl
 
 ![Deep Reef：五种鱼与十二条群游小鱼的运行画面](docs/preview.png)
 
+## 下载最新版
+
+[下载 macOS Apple Silicon 应用](https://github.com/leigong050-collab/deep-reef/releases/latest/download/Deep-Reef-macOS-arm64.zip) · [下载源码和 Skill](https://github.com/leigong050-collab/deep-reef/releases/latest/download/deep-reef-source.zip) · [发布说明](https://github.com/leigong050-collab/deep-reef/releases/latest)
+
+v0.1.1 修复尾摆跳变、瞬间翻面和帧间节奏，增加鱼身厚度与光照。仍为 2.5D，真实性尚未达到完整三维鱼体。预编译应用适用于 Apple Silicon Mac，Intel Mac 请从源码编译。
+
 ## 浏览器预览
 
 Node.js 20+，支持 WebGL2 的现代浏览器：
@@ -20,7 +26,7 @@ npm start
 
 - 鼠标靠近鱼群会轻微避让；点击水面或“投喂”按钮喂鱼。
 - 空格：暂停/继续；F：全屏；H：隐藏/显示界面。快捷键在表单控件未聚焦时生效。
-- 深蓝展缸、月光、清透日光三档。画质：节能 20 / 均衡 30 / 精细 60 帧上限。
+- 深蓝展缸、月光、清透日光三档。画质：节能 20 / 均衡 60 / 精细 60 帧上限；电池供电仍限 30 帧。均衡模式通过较低渲染分辨率节省开销。
 - 偏好保存在浏览器本地。首次访问尊重系统“减少动态效果”；页面隐藏时停止动画。
 
 ## Mac 应用
