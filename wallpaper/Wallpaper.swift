@@ -291,6 +291,8 @@ final class Wallpaper: NSObject, WKNavigationDelegate {
         const context = canvas && canvas.getContext('webgl2');
         return JSON.stringify({
           pixels: canvas && [canvas.width, canvas.height],
+          measuredFps: canvas && canvas.dataset.fps,
+          simulationTime: canvas && canvas.dataset.simulationTime,
           covered: !document.querySelector('#loading').hidden,
           webgl2: Boolean(context),
           gpu: context && context.getParameter(context.RENDERER),
